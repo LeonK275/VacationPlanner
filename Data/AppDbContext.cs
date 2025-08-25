@@ -1,6 +1,9 @@
-﻿namespace VacationPlanner.Data
+﻿using Microsoft.EntityFrameworkCore;
+using VacationPlanner.Models;
+
+namespace VacationPlanner.Data;
+
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public class AppDbContext
-    {
-    }
+    public DbSet<Employee> Employees => Set<Employee>();
 }
