@@ -1,0 +1,20 @@
+﻿@model IEnumerable<VacationPlanner.Models.Project>
+@{
+    ViewData["Title"] = "Projects";
+}
+<h1>Projects</h1>
+<p><a class="btn btn-primary" asp-action="Create">New Project</a></p>
+<table class="table">
+    <thead><tr><th>Id</th><th>Customer</th><th>Start</th><th>End</th></tr></thead>
+    <tbody>
+        @foreach (var p in Model)
+        {
+            <tr>
+                <td>@p.Id</td>
+                <td>@p.Customer?.Name (@p.CustomerId)</td>
+                <td>@p.Start</td>
+                <td>@p.End</td>
+            </tr>
+        }
+    </tbody>
+</table>

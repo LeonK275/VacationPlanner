@@ -1,0 +1,23 @@
+﻿@model IEnumerable<VacationPlanner.Models.Employee>
+@{
+    ViewData["Title"] = "Employees";
+}
+<h1>Employees</h1>
+
+<p><a asp-action="Create" class="btn btn-primary">New Employee</a></p>
+
+<table class="table">
+    <thead>
+        <tr><th>Id</th><th>Name</th><th>Job Title</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var e in Model)
+        {
+            <tr>
+                <td>@e.Id</td>
+                <td>@e.Name</td>
+                <td>@e.JobTitle</td>
+            </tr>
+        }
+    </tbody>
+</table>
