@@ -11,4 +11,7 @@ public class Project
     // Projektzeitraum
     public DateOnly Start { get; set; }
     public DateOnly End { get; set; }
+    public ICollection<EmployeeProject> EmployeeProjects { get; } = new List<EmployeeProject>();
+    public ICollection<VacationRequest> VacationRequests { get; } = new List<VacationRequest>();
+
 }

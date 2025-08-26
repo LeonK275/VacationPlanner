@@ -1,0 +1,50 @@
+﻿@model IEnumerable<VacationPlanner.Models.VacationRequest>
+@{
+    ViewData["Title"] = "Vacation Requests";
+}
+
+<h1>Vacation Requests</h1>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">New Request</a>
+</p>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Employee</th>
+        <th>Project</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Status</th>
+        <th style="width:160px;">Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr>
+            <td>@r.Employee?.Name</td>
+            <td>@r.Project?.Id</td>
+            <td>@r.Start</td>
+            <td>@r.End</td>
+            <td>@r.Status</td>
+            <td>
+                @if (r.Status == VacationPlanner.Models.VacationRequestStatus.Submitted)
+                {
+                    <a asp-action="Approve" asp-route-id="@r.Id" class="btn btn-success btn-sm">Approve</a>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

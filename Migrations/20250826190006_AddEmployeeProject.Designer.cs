@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VacationPlanner.Data;
 
@@ -10,9 +11,11 @@ using VacationPlanner.Data;
 namespace VacationPlanner.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250826190006_AddEmployeeProject")]
+    partial class AddEmployeeProject
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
@@ -87,42 +90,6 @@ namespace VacationPlanner.Migrations
                     b.ToTable("Projects");
                 });
 
-            modelBuilder.Entity("VacationPlanner.Models.VacationRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateOnly>("End")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateOnly>("Start")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId", "Start", "End");
-
-                    b.HasIndex("ProjectId", "Start", "End");
-
-                    b.ToTable("VacationRequests", t =>
-                        {
-                            t.HasCheckConstraint("CK_VacationRequest_Period", "\"Start\" <= \"End\"");
-                        });
-                });
-
             modelBuilder.Entity("VacationPlanner.Models.EmployeeProject", b =>
                 {
                     b.HasOne("VacationPlanner.Models.Employee", "Employee")
@@ -153,25 +120,6 @@ namespace VacationPlanner.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("VacationPlanner.Models.VacationRequest", b =>
-                {
-                    b.HasOne("VacationPlanner.Models.Employee", "Employee")
-                        .WithMany("VacationRequests")
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("VacationPlanner.Models.Project", "Project")
-                        .WithMany("VacationRequests")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("Project");
-                });
-
             modelBuilder.Entity("VacationPlanner.Models.Customer", b =>
                 {
                     b.Navigation("Projects");
@@ -180,15 +128,11 @@ namespace VacationPlanner.Migrations
             modelBuilder.Entity("VacationPlanner.Models.Employee", b =>
                 {
                     b.Navigation("EmployeeProjects");
-
-                    b.Navigation("VacationRequests");
                 });
 
             modelBuilder.Entity("VacationPlanner.Models.Project", b =>
                 {
                     b.Navigation("EmployeeProjects");
-
-                    b.Navigation("VacationRequests");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,0 +1,43 @@
+﻿@model VacationPlanner.Models.VacationRequest
+@{
+    ViewData["Title"] = "Create Vacation Request";
+}
+<h1>Create Vacation Request</h1>
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label asp-for="EmployeeId" class="form-label">Employee</label>
+        <select asp-for="EmployeeId" asp-items="ViewBag.Employees" class="form-select"></select>
+        <span asp-validation-for="EmployeeId" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="ProjectId" class="form-label">Project</label>
+        <select asp-for="ProjectId" asp-items="ViewBag.Projects" class="form-select"></select>
+        <span asp-validation-for="ProjectId" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Start" class="form-label"></label>
+        <input asp-for="Start" type="date" class="form-control" />
+        <span asp-validation-for="Start" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="End" class="form-label"></label>
+        <input asp-for="End" type="date" class="form-control" />
+        <span asp-validation-for="End" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Status" class="form-label"></label>
+        <select asp-for="Status" asp-items="ViewBag.Statuses" class="form-select"></select>
+    </div>
+
+    <button class="btn btn-primary">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
