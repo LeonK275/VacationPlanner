@@ -32,6 +32,12 @@ public class AppDbContext : DbContext
             .WithMany(p => p.EmployeeProjects)
             .HasForeignKey(ep => ep.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        modelBuilder.Entity<Employee>()
+            .HasIndex(e => e.ExternalId)
+            .IsUnique()
+            .HasFilter("\"ExternalId\" IS NOT NULL"); // SQLite-Partial-Index
+
 
         // VacationRequest Mapping
         modelBuilder.Entity<VacationRequest>(entity =>

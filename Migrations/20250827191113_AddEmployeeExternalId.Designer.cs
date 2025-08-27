@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VacationPlanner.Data;
 
@@ -10,9 +11,11 @@ using VacationPlanner.Data;
 namespace VacationPlanner.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250827191113_AddEmployeeExternalId")]
+    partial class AddEmployeeExternalId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
@@ -28,7 +31,7 @@ namespace VacationPlanner.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("VacationPlanner.Models.Employee", b =>
@@ -54,7 +57,7 @@ namespace VacationPlanner.Migrations
                     b.HasIndex("ExternalId")
                         .IsUnique();
 
-                    b.ToTable("Employees", (string)null);
+                    b.ToTable("Employees");
                 });
 
             modelBuilder.Entity("VacationPlanner.Models.EmployeeProject", b =>
@@ -69,7 +72,7 @@ namespace VacationPlanner.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("EmployeeProjects", (string)null);
+                    b.ToTable("EmployeeProjects");
                 });
 
             modelBuilder.Entity("VacationPlanner.Models.Project", b =>
@@ -91,7 +94,7 @@ namespace VacationPlanner.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("Projects", (string)null);
+                    b.ToTable("Projects");
                 });
 
             modelBuilder.Entity("VacationPlanner.Models.VacationRequest", b =>
@@ -124,7 +127,7 @@ namespace VacationPlanner.Migrations
 
                     b.HasIndex("ProjectId", "Start", "End");
 
-                    b.ToTable("VacationRequests", null, t =>
+                    b.ToTable("VacationRequests", t =>
                         {
                             t.HasCheckConstraint("CK_VacationRequest_Period", "\"Start\" <= \"End\"");
                         });
