@@ -1,0 +1,30 @@
+@model VacationPlanner.Models.ImportResult
+@{
+    ViewData["Title"] = "Import Ergebnis";
+}
+<h1>Import Ergebnis</h1>
+
+<div class="card p-3">
+    <p><strong>Employees eingefügt:</strong> @Model.EmployeesInserted</p>
+    <p><strong>Customers eingefügt:</strong> @Model.CustomersInserted</p>
+    <p><strong>Projects eingefügt:</strong> @Model.ProjectsInserted</p>
+    <p><strong>Zuordnungen eingefügt:</strong> @Model.AssignmentsInserted</p>
+    <p><strong>Status:</strong> @(Model.Success ? "Erfolg (ggf. mit Hinweisen)" : "Fehler aufgetreten")</p>
+</div>
+
+@if (Model.Errors.Any())
+{
+    <div class="alert alert-warning mt-3">
+        <h5>Hinweise/Fehler</h5>
+        <ul>
+            @foreach (var e in Model.Errors)
+            {
+                <li>@e</li>
+            }
+        </ul>
+    </div>
+}
+
+<p class="mt-3">
+    <a asp-action="Index" class="btn btn-secondary">Neuer Import</a>
+</p>

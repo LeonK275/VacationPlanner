@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using VacationPlanner.Data;
+using VacationPlanner.Models; 
 
 internal class Program
 {
@@ -8,7 +9,8 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services.AddControllersWithViews();
-
+        builder.Services.AddScoped<VacationPlanner.Models.ImportService>();
+        builder.Services.AddScoped<ImportService>(); 
 
         var connectionString = "Data Source=vacationplanner.db";
         builder.Services.AddDbContext<AppDbContext>(options =>
