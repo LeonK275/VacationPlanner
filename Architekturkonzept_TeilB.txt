@@ -1,0 +1,290 @@
+﻿# Teil B – Architekturkonzept 
+
+Version: 1.0
+Autor: Leon K.
+Stand: 31.08.2025
+
+============================================================
+1) Zielbild & Annahmen (Domäne)
+============================================================
+
+Ziel
+----
+Eine schlanke, skalierbare Lösung zur Verwaltung von Urlaubsanträgen in Projektteams:
+- Mitarbeitende beantragen Urlaub
+- Genehmiger/Projekt-Owner prüfen und entscheiden
+- System gibt Konflikthinweise gemäß Regelwerk
+- Bestandsdaten können per JSON importiert werden
+
+Stakeholder
+-----------
+- Mitarbeitende (Antragsteller)
+- Projekt-Owner / Genehmiger
+- HR / Admin (Stammdatenpflege, Reporting)
+- IT-Betrieb (Deployment/Monitoring)
+
+Wichtigste Use Cases / Ereignisse
+---------------------------------
+- UC1: Urlaub beantragen (Submitted)
+- UC2: Antrag genehmigen/ablehnen (Approved/Rejected)
+- UC3: Konfliktprüfung (bei Beantragung vs. Genehmigung)
+- UC4: Bestandsdaten-Import (Employees/Customers/Projects/Zuordnungen)
+- UC5: Änderung/Storno von Anträgen (Cancelled)
+- UC6: Einsicht in Projekt-/Teambelegung
+
+Domain-Regeln (Kern)
+--------------------
+- Beantragung/Änderung: Konfliktprüfung NUR gegen bereits genehmigte Anträge anderer im selben Projekt & Zeitraum.
+- Genehmigung: Konfliktprüfung gegen ALLE Anträge anderer im selben Projekt & Zeitraum.
+- Zeitraumüberschneidung, wenn A.Start <= B.End && B.Start <= A.End.
+- Mitarbeiter darf nur im Projekt beantragen, dem er zugeordnet ist.
+
+Annahmen
+--------
+- Einfache Organisationsstruktur, keine komplexe Ressourcenplanung.
+- Startlösung ohne Mandanten (Tenant), später erweiterbar.
+- Microsoft-/Azure-Stack ist gesetzt (Layer2-Annahme der Aufgabe).
+
+
+============================================================
+2) Architektur der Softwarelösung (auf Teil A aufbauend)
+============================================================
+
+Ist-Umsetzung (Teil A)
+----------------------
+- ASP.NET Core MVC (.NET 9)
+- EF Core + SQLite
+- Schichten: MVC (Controller/Views) – Domain/Services (Konflikt- & Importservice) – Data (AppDbContext)
+- Domain: Employee(int + ExternalId), Customer(string), Project(string; Start/End), EmployeeProject(join), VacationRequest(Start/End/Status)
+- ImportService: Insert-only, Validierungs-/Fehlerliste
+
+Zielarchitektur (Wachstumspfad)
+-------------------------------
+- Persistenz: Wechsel auf Azure SQL (kompatible EF-Mappings)
+- API-Layer zusätzlich zur MVC-UI (ASP.NET Core Minimal API/Controller) für Integrationen
+- Domain Services auslagern (z. B. VacationPolicyService, ImportService)
+- Asynchrone Ereignisse über Azure Service Bus (z. B. "VacationRequestApproved" → Benachrichtigung/Export)
+- Modultrennung:
+  - Module.Stammdaten (Employees/Customers/Projects)
+  - Module.Requests (Vacation)
+  - Module.Import (Batch/Delta)
+  - Module.Notifications (E-Mail/Teams)
+- Optional Mandantenfähigkeit (TenantId auf Kern-Entitäten + Row-Level-Filter in EF)
+
+Trade-offs
+----------
+- Start als Monolith (einfach, schnell) vs. später modulare Entkopplung (Mehrkomplexität, aber skalierbar).
+- EF Core als ORM (Produktivität) vs. SQL-Only (max. Kontrolle).
+- Konfliktlogik in C# (lesbar, testbar) vs. DB-Seite (schnell, aber schwerer testbar).
+
+Komponentendiagramm (vereinfacht, Text)
+---------------------------------------
+[Browser] → [ASP.NET Core MVC] → [Domain Services] → [EF Core] → [DB]
+                               ↘ [ImportService] ↘ [Azure Blob/Storage, optional]
+                               ↘ [Notifications (Teams/Email) via Graph, optional]
+
+
+============================================================
+3) Sicherheit, Authentifizierung & Rollenverwaltung
+============================================================
+
+AuthN (Anmeldung)
+-----------------
+- Produktiv: Azure Entra ID (Azure AD) / OpenID Connect
+- Lokal: Dummy-Login oder Development-Account
+
+AuthZ (Rollen)
+--------------
+- Rollen: Employee (Standard), Approver/ProjectOwner (Genehmigen), Admin (Stammdaten/Import)
+- Abbildung:
+  - Kurzfristig: ASP.NET Core Roles/Claims
+  - Mittel-/Langfristig: Azure AD-Gruppen → Rollen-Mapping (Claims Transformation)
+- Durchsetzung: Policy-basierte Autorisierung (z. B. [Authorize(Policy = "CanApprove")])
+
+Erweiterbarkeit
+---------------
+- Externe Rollenquelle (Microsoft Graph) für Projekt-Owner
+- Auditing: Wer hat wann welchen Antrag geändert/genehmigt? (ChangeLog/Audit-Table)
+- Principle of Least Privilege: getrennte App-Registrierungen/Scopes, Key Vault für Secrets
+
+
+============================================================
+4) Persistenz & Datenmodell
+============================================================
+
+Kernentitäten
+-------------
+- Employee(Id:int, ExternalId?:string UNIQUE FILTERED, Name, JobTitle)
+- Customer(Id:string, Name)
+- Project(Id:string, CustomerId, Start:DateOnly, End:DateOnly)
+- EmployeeProject(EmployeeId:int, ProjectId:string) [PK: (EmployeeId, ProjectId)]
+- VacationRequest(Id:int, EmployeeId:int, ProjectId:string, Start:DateOnly, End:DateOnly, Status:enum)
+
+Abfragepfade & Indizes
+----------------------
+- VacationRequest: (ProjectId, Start, End), (EmployeeId, Start, End)
+- Employee.ExternalId: gefilterter Unique-Index (IS NOT NULL) für Import
+- Bei Azure SQL: zusätzliche Indexabdeckung für häufige Listen (Projektwochen, Genehmiger-Queues)
+
+Konsistenz/Parallelität
+-----------------------
+- Concurrency Token (RowVersion) auf VacationRequest für sichere Statuswechsel (optimistic concurrency)
+- OnDelete: Restrict zwischen VacationRequest ↔ Employee/Project (kein unbemerkter Cascade-Datenverlust)
+- Check Constraint: Start <= End
+
+Erweiterungen
+-------------
+- Historisierung: RequestHistory (Statuswechsel, Actor, Timestamp, Kommentar)
+- Soft-Delete: IsDeleted + Filter
+- Mandantenfähigkeit: TenantId auf allen Aggregates + globaler QueryFilter
+- Partitionierung (Azure SQL): nach Jahr/ProjectId fürs Reporting (optional)
+
+
+============================================================
+5) Fachliche Erweiterungen (domänennah)
+============================================================
+
+Benachrichtigungen/Kalender
+---------------------------
+- E-Mail/Teams-Benachrichtigung bei Submitted/Approved/Rejected (Azure Logic Apps oder Azure Functions)
+- Teams-Webhook/Graph-API; optional ICS-Export (Kalendereintrag)
+
+Regelwerk/Policies
+------------------
+- Team-Abwesenheitsquote (max. % gleichzeitig abwesend)
+- Sperrtermine (Release-Phasen, Stichtage)
+- Feiertagskalender/Länder-Ferien (externe Quelle, gecacht)
+- Parametrisierbar pro Projekt/Kunde (Policy-Tabelle)
+
+Mehrstufige Genehmigungen
+-------------------------
+- Stufe 1: Projekt-Owner; Stufe 2: Bereichsleiter/HR
+- Eskalation bei Timeout
+- Abbildung als eigene Approval-Instanzen (RequestId, Stage, Approver, DueDate)
+
+Reporting/Exports
+-----------------
+- Projektbelegung pro Monat/Quartal (Pivot)
+- Export CSV/Excel/Power BI Dataset
+- API-Endpunkte für BI/Reporting
+
+Import-Varianten
+----------------
+- Batch (heute): komplette Daten
+- Delta: Upsert + Lösch-Markierungen (Duplikatbehandlung, Versionsstempel)
+- Dateiannahme in Azure Storage + Queue getriggerter Import (resilient)
+
+
+============================================================
+6) Bereitstellung & Betrieb (Deployment, Observability)
+============================================================
+
+Zielplattformen
+---------------
+- Azure App Service (Web App)
+- Azure SQL Database
+- Azure Storage (Dateiablage Import/Export, optional)
+- Azure Service Bus (Events/Benachrichtigungen, optional)
+- Azure Key Vault (Secrets/ConnStrings)
+- Application Insights (Logs/Telemetry)
+
+Deployment
+----------
+- IaC (Bicep/Terraform): App Service, Azure SQL, Key Vault, Storage, ggf. Service Bus
+- Blue-Green/Slots für Zero-Downtime
+- Konfiguration via AppSettings + Key Vault References
+
+Monitoring/Logging/Alarme
+-------------------------
+- Application Insights: verteiltes Tracing, Metriken (Requests, Abbrüche, Latenz)
+- Strukturierte Logs (Serilog) mit Korrelation (RequestId)
+- Alerts: Fehlerquote, 5xx Rate, Auslastung SQL DTU, Storage-Verfügbarkeit
+- Backups: Point-in-Time Restore (Azure SQL), Storage-Versionierung
+
+Skalierung
+----------
+- Horizontal: App Service Scale-Out; SQL: Skalierungsstufe/Read Replicas (Read-Intensive Reports)
+- Caching von Stammdaten (Memory/Redis)
+- Queue-basierte Verarbeitung (Import, Benachrichtigungen) zur Entkopplung bei Lastspitzen
+
+Sicherheit/Basismaßnahmen
+-------------------------
+- HTTPS only, HSTS
+- Managed Identity für App → Key Vault/Storage/Graph
+- Regelmäßige Security-Updates/Dependency Scans (GH Dependabot/Azure DevOps)
+
+
+============================================================
+Anhang A – Sequenzdiagramm (Genehmigung mit Konfliktprüfung)
+============================================================
+
+(vereinfachtes Pseudo-UML in Text)
+
+User(Approver) → MVC: Klick "Approve"
+MVC → DomainService: ValidateApproval(RequestId)
+DomainService → DB: Lade Request + andere Requests im selben Projekt
+DomainService: Prüfe Überschneidung (Start/End)
+[Konflikt?] → MVC: Fehlermeldung mit Details
+[Kein Konflikt] → DB: Update Status = Approved + History
+DB → MVC: OK
+MVC → User: Erfolgsmeldung
+
+
+============================================================
+Anhang B – Beispiel-Komponentenschnitt (Erweiterung)
+============================================================
+
+- WebApp (MVC + API)
+  - Controllers (UI, API)
+  - Domain Services (VacationPolicyService, ImportService)
+  - Integration (Notifications, Graph, Service Bus)
+  - Data (EF Core, AppDbContext, Repository optional)
+- Infrastruktur
+  - Azure SQL, Key Vault, Storage, Service Bus
+  - App Insights
+
+Schnittstellen
+--------------
+- API: /api/v1/requests, /api/v1/projects, /api/v1/imports
+- Events: topic "vacation-requests" (Submitted/Approved/Rejected/Cancelled)
+
+
+============================================================
+Anhang C – ADR-Light (3–5 zentrale Architekturentscheidungen)
+============================================================
+
+ADR-01: IDs für Customer/Project als String
+-------------------------------------------
+Kontext: Import aus Fremdsystem liefert String-IDs.
+Entscheidung: Customer.Id und Project.Id sind string (statt int/Guid).
+Begründung: 1:1-Übernahme aus JSON, vermeidet Mapping-Tabelle.
+Konsequenz: Indizes auf string-FK; performant genug für Zielgröße; bei massivem Wachstum Partitionierung.
+
+ADR-02: Insert-only Import (v1)
+-------------------------------
+Kontext: Einfacher, robuster Erstimport mit klarer Fehlerliste.
+Entscheidung: ImportService schreibt nur neue Datensätze; Duplikate → Fehlereintrag.
+Begründung: Reduziert Komplexität/Seiteneffekte, transparentes Verhalten.
+Konsequenz: Für Delta-Import wird später Upsert + Versionierung ergänzt.
+
+ADR-03: Konfliktlogik in C# Domain Service
+------------------------------------------
+Kontext: Prüfen von Überschneidungen + Statusregeln.
+Entscheidung: Implementierung in C# (nicht als SQL-Prozedur).
+Begründung: Bessere Testbarkeit, Domänenlogik im Code, Portabilität DB.
+Konsequenz: DB bleibt generisch; bei Performancebedarf: View/Index-Optimierung.
+
+ADR-04: Start als Monolith, modulare Erweiterung
+------------------------------------------------
+Kontext: Projektumfang/Timebox; klare Domäne, aber Wachstum möglich.
+Entscheidung: Monolithische WebApp (MVC) mit klaren Services; API/Events als Erweiterung.
+Begründung: Time-to-Value; spätere Entkopplung ohne Rewrite.
+Konsequenz: Bei Lastspitzen werden Import/Notifications zuerst ausgelagert (Functions/Service Bus).
+
+ADR-05: Azure Entra ID + Rollen via Claims
+------------------------------------------
+Kontext: Unternehmensumfeld Microsoft/Azure.
+Entscheidung: OIDC mit Entra ID; Rollen aus Gruppen → Claims-Mapping; Policies.
+Begründung: SSO, zentrale Governance, minimaler Admin-Aufwand.
+Konsequenz: Lokale Dev-Bypässe; klare Trennung von AuthN/AuthZ.
+

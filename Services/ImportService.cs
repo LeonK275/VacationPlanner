@@ -1,10 +1,8 @@
-// Services/ImportService.cs
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using VacationPlanner.Data;
 
-namespace VacationPlanner.Models; // <-- genau dieser Namespace!
-
+namespace VacationPlanner.Models; 
 public class ImportResult
 {
     public int EmployeesInserted { get; set; }

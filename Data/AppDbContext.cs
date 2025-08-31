@@ -17,7 +17,7 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // EmployeeProject Mapping
+        
         modelBuilder.Entity<EmployeeProject>()
             .HasKey(ep => new { ep.EmployeeId, ep.ProjectId });
 
@@ -36,7 +36,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Employee>()
             .HasIndex(e => e.ExternalId)
             .IsUnique()
-            .HasFilter("\"ExternalId\" IS NOT NULL"); // SQLite-Partial-Index
+            .HasFilter("\"ExternalId\" IS NOT NULL"); 
 
 
         // VacationRequest Mapping
@@ -52,16 +52,16 @@ public class AppDbContext : DbContext
                   .HasForeignKey(v => v.ProjectId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            // Status als TEXT speichern
+            
             entity.Property(v => v.Status)
                   .HasConversion<string>()
                   .HasMaxLength(20);
 
-            // Indizes für Konfliktprüfung
+            
             entity.HasIndex(v => new { v.ProjectId, v.Start, v.End });
             entity.HasIndex(v => new { v.EmployeeId, v.Start, v.End });
 
-            // Constraint: Start <= End
+            
             entity.HasCheckConstraint("CK_VacationRequest_Period", "\"Start\" <= \"End\"");
         });
     }

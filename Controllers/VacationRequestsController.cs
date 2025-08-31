@@ -41,11 +41,11 @@ public class VacationRequestsController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(VacationRequest model)
     {
-        // 1) Grundvalidierung Zeitraum
+        
         if (model.End < model.Start)
             ModelState.AddModelError(nameof(model.End), "Ende darf nicht vor Start liegen.");
 
-        // 2) Mitarbeiter muss dem Projekt zugeordnet sein
+        
         var isAssigned = await _db.EmployeeProjects
             .AnyAsync(ep => ep.EmployeeId == model.EmployeeId && ep.ProjectId == model.ProjectId);
 
@@ -53,7 +53,7 @@ public class VacationRequestsController : Controller
             ModelState.AddModelError(nameof(model.ProjectId),
                 "Mitarbeiter ist diesem Projekt nicht zugeordnet.");
 
-        // 3) Konfliktprüfung (nur gegen genehmigte Anträge anderer im selben Projekt)
+        
         var conflicts = await FindConflictsForSubmission(model);
         if (conflicts.Count > 0)
         {
@@ -104,7 +104,7 @@ public class VacationRequestsController : Controller
         if (request == null)
             return NotFound();
 
-        // Konfliktprüfung: gegen ALLE anderen Anträge im Projekt
+        
         var conflicts = await FindConflictsForApproval(request);
         if (conflicts.Count > 0)
         {
@@ -122,7 +122,7 @@ public class VacationRequestsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-// --- Private Helfer für Genehmigung ---
+
     private async Task<List<VacationRequest>> FindConflictsForApproval(VacationRequest candidate)
     {
         return await _db.VacationRequests
@@ -135,6 +135,40 @@ public class VacationRequestsController : Controller
             .AsNoTracking()
             .ToListAsync();
     }
+    
+    // GET: /VacationRequests/Reject/5
+    public async Task<IActionResult> Reject(int id)
+    {
+        var request = await _db.VacationRequests.FindAsync(id);
+        if (request == null) return NotFound();
+        if (request.Status != VacationRequestStatus.Submitted)
+        {
+            TempData["Error"] = "Nur eingereichte Anträge können abgelehnt werden.";
+            return RedirectToAction(nameof(Index));
+        }
+        request.Status = VacationRequestStatus.Rejected;
+        await _db.SaveChangesAsync();
+        TempData["Message"] = "Antrag wurde abgelehnt.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // GET: /VacationRequests/Cancel/5
+    public async Task<IActionResult> Cancel(int id)
+    {
+        var request = await _db.VacationRequests.FindAsync(id);
+        if (request == null) return NotFound();
+        if (request.Status == VacationRequestStatus.Approved ||
+            request.Status == VacationRequestStatus.Submitted)
+        {
+            request.Status = VacationRequestStatus.Cancelled;
+            await _db.SaveChangesAsync();
+            TempData["Message"] = "Antrag wurde storniert.";
+            return RedirectToAction(nameof(Index));
+        }
+        TempData["Error"] = "Nur eingereichte oder genehmigte Anträge können storniert werden.";
+        return RedirectToAction(nameof(Index));
+    }
+
 
 
 }

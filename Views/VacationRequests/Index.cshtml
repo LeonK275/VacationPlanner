@@ -41,9 +41,15 @@
             <td>
                 @if (r.Status == VacationPlanner.Models.VacationRequestStatus.Submitted)
                 {
-                    <a asp-action="Approve" asp-route-id="@r.Id" class="btn btn-success btn-sm">Approve</a>
+                    <a asp-action="Approve" asp-route-id="@r.Id" class="btn btn-success btn-sm me-1">Approve</a>
+                    <a asp-action="Reject"  asp-route-id="@r.Id" class="btn btn-danger  btn-sm">Reject</a>
+                }
+                else if (r.Status == VacationPlanner.Models.VacationRequestStatus.Approved)
+                {
+                    <a asp-action="Cancel" asp-route-id="@r.Id" class="btn btn-outline-secondary btn-sm">Cancel</a>
                 }
             </td>
+
         </tr>
     }
     </tbody>
